@@ -518,8 +518,13 @@ require([
   var tMeasure   = document.getElementById("tMeasure");
   var tLocate    = document.getElementById("tLocate");
 
-  var measurement = new Measurement({ view: view, activeTool: null });
-  document.getElementById("measureHost").appendChild(measurement.container);
+var measurement = new Measurement({
+2
+view: view,
+3
+container: document.getElementById("measureHost"),
+4
+activeTool: null
 
   function closeAll(){
     popBasemap.classList.remove("show"); tBasemap.classList.remove("on");
