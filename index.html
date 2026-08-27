@@ -1,29 +1,621 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1" />
+<meta name="theme-color" content="#0d1b24" />
 <title>Franklinford Field Collection</title>
-<link rel="stylesheet" href="https://js.arcgis.com/4.34/esri/themes/dark/main.css">
+
+<link rel="stylesheet" href="https://js.arcgis.com/4.34/esri/themes/dark/main.css" />
 <script src="https://js.arcgis.com/4.34/"></script>
+
 <style>
-html,body,#viewDiv{margin:0;padding:0;height:100%;width:100%}body{font-family:sans-serif}#panel{position:absolute;left:0;right:0;bottom:0;background:#10202b;color:#fff;padding:16px;z-index:10;border-radius:20px 20px 0 0}button{width:100%;padding:12px;margin-top:8px;border:none;border-radius:8px;font-weight:bold}#directions{background:#4de1d2}#survey{background:#ffc857}
+:root{
+  --ink:#0d1b24;
+  --ink-2:#132a37;
+  --paper:#f4ece1;
+  --amber:#f2a03d;
+  --amber-hi:#ffc46b;
+  --teal:#5fd3c4;
+  --moss:#7bb661;
+  --rust:#c9553d;
+  --muted:#9db3bf;
+  --line:rgba(244,236,225,.14);
+  --sb:env(safe-area-inset-bottom,0px);
+  --st:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;width:100%;overflow:hidden;background:var(--ink)}
+body{
+  font-family:"Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;
+  color:var(--paper);
+}
+#viewDiv{position:absolute;inset:0}
+
+/* ---------- top bar ---------- */
+#topbar{
+  position:absolute;top:calc(10px + var(--st));left:10px;right:10px;
+  display:flex;gap:8px;align-items:flex-start;z-index:20;pointer-events:none;
+}
+.brand{
+  pointer-events:auto;
+  background:linear-gradient(180deg,rgba(13,27,36,.94),rgba(13,27,36,.86));
+  border:1px solid var(--line);border-radius:14px;padding:9px 13px;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:0 8px 26px rgba(0,0,0,.4);
+}
+.brand .kicker{
+  font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--amber);font-weight:700;
+}
+.brand .title{font-size:15px;font-weight:600;letter-spacing:.01em;margin-top:1px}
+.grow{flex:1}
+
+.tool{
+  pointer-events:auto;
+  width:46px;height:46px;flex:0 0 46px;
+  display:grid;place-items:center;
+  border:1px solid var(--line);border-radius:14px;
+  background:rgba(13,27,36,.9);color:var(--paper);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:0 8px 26px rgba(0,0,0,.4);
+  cursor:pointer;transition:transform .12s ease,background .18s ease;
+}
+.tool:active{transform:scale(.94)}
+.tool.on{background:var(--amber);border-color:var(--amber);color:#241202}
+.tool svg{width:21px;height:21px;stroke-width:1.7;fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- floating panels ---------- */
+.pop{
+  position:absolute;z-index:25;top:calc(66px + var(--st));right:10px;
+  width:min(280px,calc(100vw - 20px));
+  background:rgba(13,27,36,.96);border:1px solid var(--line);border-radius:16px;
+  padding:12px;box-shadow:0 20px 50px rgba(0,0,0,.55);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  display:none;
+}
+.pop.show{display:block}
+.pop h3{margin:0 0 9px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--amber)}
+.bm-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.bm{
+  border:1px solid var(--line);border-radius:11px;background:var(--ink-2);
+  color:var(--paper);padding:10px 8px;font-size:12px;font-weight:600;cursor:pointer;
+  transition:.15s;
+}
+.bm:active{transform:scale(.96)}
+.bm.sel{background:var(--amber);border-color:var(--amber);color:#241202}
+#measureHost{margin-top:2px}
+.hint{font-size:11px;color:var(--muted);line-height:1.45;margin-top:8px}
+
+/* ---------- bottom sheet ---------- */
+#sheet{
+  position:absolute;left:0;right:0;bottom:0;z-index:30;
+  background:linear-gradient(180deg,rgba(19,42,55,.97),rgba(13,27,36,.99));
+  border-top:1px solid var(--line);
+  border-radius:22px 22px 0 0;
+  padding:9px 16px calc(14px + var(--sb));
+  box-shadow:0 -14px 44px rgba(0,0,0,.55);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+}
+.grabber{width:40px;height:4px;border-radius:99px;background:#3c5666;margin:0 auto 11px}
+.head{display:flex;gap:12px;align-items:flex-start}
+.head .lbl{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--amber);font-weight:700}
+#siteName{font-size:23px;font-weight:600;margin-top:2px;line-height:1.1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#siteMeta{font-size:12.5px;color:var(--muted);margin-top:4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#badge{
+  flex:0 0 auto;font-size:11px;font-weight:700;padding:7px 11px;border-radius:99px;
+  border:1px solid var(--line);color:var(--muted);white-space:nowrap;
+}
+#badge.done{background:rgba(123,182,97,.16);border-color:rgba(123,182,97,.5);color:#bfe3a9}
+
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px}
+.btn{
+  min-height:52px;border:none;border-radius:14px;font-size:14.5px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;
+  transition:transform .12s ease,opacity .15s ease;
+}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#btnNav{background:var(--teal);color:#04302b}
+#btnSurvey{background:var(--amber);color:#2a1502}
+#btnLogged{
+  width:100%;margin-top:9px;min-height:44px;border-radius:13px;font-size:13px;font-weight:600;
+  background:transparent;border:1px solid var(--line);color:var(--muted);cursor:pointer;
+}
+#btnLogged.is-done{border-color:rgba(123,182,97,.5);color:#bfe3a9}
+
+.prog{display:flex;align-items:center;gap:10px;margin-top:13px;font-size:11.5px;color:var(--muted)}
+.track{flex:1;height:5px;border-radius:99px;background:rgba(244,236,225,.1);overflow:hidden}
+#bar{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--moss),var(--teal));transition:width .3s ease}
+
+/* ---------- toast + loader ---------- */
+#toast{
+  position:absolute;z-index:60;left:50%;transform:translateX(-50%);
+  top:calc(72px + var(--st));width:min(90vw,460px);
+  background:rgba(201,85,61,.95);border:1px solid rgba(255,190,170,.35);
+  border-radius:13px;padding:11px 14px;font-size:13px;display:none;
+  box-shadow:0 14px 36px rgba(0,0,0,.5);
+}
+#loader{position:absolute;inset:0;z-index:70;display:grid;place-items:center;background:var(--ink);text-align:center}
+.spin{width:34px;height:34px;margin:0 auto 13px;border:3px solid rgba(244,236,225,.15);
+  border-top-color:var(--amber);border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+#loader .kicker{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--amber);font-weight:700}
+#loader .t{font-size:16px;margin-top:4px}
+
+/* esri chrome */
+.esri-view .esri-ui-corner .esri-component{box-shadow:0 8px 26px rgba(0,0,0,.4)}
+.esri-attribution{font-size:10px}
+.esri-ui-bottom-left{bottom:212px!important}
+.esri-ui-bottom-right{bottom:212px!important}
+.esri-measurement{background:transparent;color:var(--paper)}
+
+@media(min-width:820px){
+  #sheet{left:auto;right:14px;bottom:14px;width:390px;border:1px solid var(--line);border-radius:20px;padding-bottom:16px}
+  .esri-ui-bottom-left{bottom:26px!important}
+  .esri-ui-bottom-right{bottom:26px!important;right:420px!important}
+  .pop{right:14px}
+}
 </style>
-<script>
-require(["esri/Map","esri/views/MapView","esri/layers/FeatureLayer"],function(Map,MapView,FeatureLayer){
-const layer=new FeatureLayer({url:"https://services1.arcgis.com/vHnIGBHHqDR6y0CR/arcgis/rest/services/FF_parcelpoints/FeatureServer/0",outFields:["*"]});
-const map=new Map({basemap:"satellite",layers:[layer]});
-const view=new MapView({container:"viewDiv",map:map});
-layer.when(()=>view.goTo(layer.fullExtent));
-let selected=null;
-view.on('click',e=>{view.hitTest(e).then(r=>{const hit=r.results.find(x=>x.graphic&&x.graphic.layer===layer);if(!hit)return;selected=hit.graphic;document.getElementById('siteName').innerText='Selected OID: '+(selected.attributes.OBJECTID||'');});});
-document.getElementById('directions').onclick=()=>{if(!selected)return;window.location.href='https://maps.apple.com/?daddr='+selected.geometry.latitude+','+selected.geometry.longitude;};
-document.getElementById('survey').onclick=()=>{if(!selected)return;window.open('https://survey123.arcgis.com/share/753e0446354f4b28a94f0296db82afca?center='+selected.geometry.latitude+','+selected.geometry.longitude,'_blank');};
-});
-</script>
 </head>
+
 <body>
 <div id="viewDiv"></div>
-<div id="panel"><div id="siteName">Tap a parcel point</div><button id="directions">Directions</button><button id="survey">Open Survey</button></div>
+
+<div id="topbar">
+  <div class="brand">
+    <div class="kicker">Field collection</div>
+    <div class="title">Franklinford</div>
+  </div>
+  <div class="grow"></div>
+
+  <button class="tool" id="tBasemap" title="Basemap">
+    <svg viewBox="0 0 24 24"><path d="M12 3 3 7.5l9 4.5 9-4.5L12 3Z"/><path d="m3 12 9 4.5L21 12"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>
+  </button>
+  <button class="tool" id="tMeasure" title="Measure">
+    <svg viewBox="0 0 24 24"><path d="M2 15 15 2l7 7L9 22 2 15Z"/><path d="m6 11 2 2M9 8l2 2M12 5l2 2"/></svg>
+  </button>
+  <button class="tool" id="tLocate" title="My location">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></svg>
+  </button>
+</div>
+
+<div class="pop" id="popBasemap">
+  <h3>Basemap</h3>
+  <div class="bm-grid">
+    <button class="bm sel" data-bm="satellite">Imagery</button>
+    <button class="bm" data-bm="hybrid">Hybrid</button>
+    <button class="bm" data-bm="topo-vector">Topographic</button>
+    <button class="bm" data-bm="streets-navigation-vector">Navigation</button>
+    <button class="bm" data-bm="osm">OpenStreetMap</button>
+    <button class="bm" data-bm="gray-vector">Light grey</button>
+  </div>
+</div>
+
+<div class="pop" id="popMeasure">
+  <h3>Measure</h3>
+  <div id="measureHost"></div>
+  <div class="hint">Tap the map to add vertices. Double-tap to finish.</div>
+</div>
+
+<div id="sheet">
+  <div class="grabber"></div>
+  <div class="head">
+    <div style="min-width:0;flex:1">
+      <div class="lbl">Inspection point</div>
+      <div id="siteName">Tap a point</div>
+      <div id="siteMeta">Loading Franklinford parcel points…</div>
+    </div>
+    <div id="badge">—</div>
+  </div>
+
+  <div class="btns">
+    <button class="btn" id="btnNav" disabled>
+      <svg viewBox="0 0 24 24"><path d="M3 11 22 2l-9 20-2-9-8-2Z"/></svg>Directions
+    </button>
+    <button class="btn" id="btnSurvey" disabled>
+      <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>Survey
+    </button>
+  </div>
+
+  <button id="btnLogged" disabled>Mark as logged</button>
+
+  <div class="prog">
+    <span id="progText">—</span>
+    <div class="track"><div id="bar"></div></div>
+    <span id="progPct">0%</span>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="loader">
+  <div>
+    <div class="spin"></div>
+    <div class="kicker">Franklinford</div>
+    <div class="t">Loading parcel points</div>
+  </div>
+</div>
+
+<script>
+require([
+  "esri/Map",
+  "esri/views/MapView",
+  "esri/layers/FeatureLayer",
+  "esri/layers/GraphicsLayer",
+  "esri/Graphic",
+  "esri/geometry/Point",
+  "esri/geometry/support/webMercatorUtils",
+  "esri/widgets/Measurement",
+  "esri/widgets/Locate"
+], function(Map, MapView, FeatureLayer, GraphicsLayer, Graphic, Point,
+            webMercatorUtils, Measurement, Locate){
+
+  "use strict";
+
+  /* ------------------------------------------------------------------
+     CONFIG
+  ------------------------------------------------------------------ */
+  var LAYER_URL   = "https://services1.arcgis.com/vHnIGBHHqDR6y0CR/arcgis/rest/services/FF_parcelpoints/FeatureServer/0";
+  var SURVEY_ID   = "753e0446354f4b28a94f0296db82afca";
+  var SURVEY_URL  = "https://survey123.arcgis.com/share/" + SURVEY_ID;
+  var STORE_KEY   = "ff_logged_oids";
+
+  /* ------------------------------------------------------------------
+     LOGGED STATE  (device-side, survives refresh)
+  ------------------------------------------------------------------ */
+  var logged = {};
+  try { logged = JSON.parse(localStorage.getItem(STORE_KEY) || "{}"); } catch(e){ logged = {}; }
+  function saveLogged(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(logged)); }catch(e){} }
+
+  /* ------------------------------------------------------------------
+     SYMBOLS  — layered marker: soft halo + solid core + dark casing
+  ------------------------------------------------------------------ */
+  function marker(fill, halo, size){
+    return {
+      type: "cim",
+      data: {
+        type: "CIMSymbolReference",
+        symbol: {
+          type: "CIMPointSymbol",
+          symbolLayers: [
+            { type:"CIMVectorMarker", enable:true, size:size,
+              frame:{xmin:-5,ymin:-5,xmax:5,ymax:5},
+              markerGraphics:[{ type:"CIMMarkerGraphic",
+                geometry:{rings:[[[0,5],[3.54,3.54],[5,0],[3.54,-3.54],[0,-5],[-3.54,-3.54],[-5,0],[-3.54,3.54],[0,5]]]},
+                symbol:{ type:"CIMPolygonSymbol", symbolLayers:[
+                  {type:"CIMSolidStroke", enable:true, width:1.6, color:[13,27,36,255]},
+                  {type:"CIMSolidFill",   enable:true, color:fill}
+                ]}
+              }]
+            },
+            { type:"CIMVectorMarker", enable:true, size:size*1.95,
+              frame:{xmin:-5,ymin:-5,xmax:5,ymax:5},
+              markerGraphics:[{ type:"CIMMarkerGraphic",
+                geometry:{rings:[[[0,5],[3.54,3.54],[5,0],[3.54,-3.54],[0,-5],[-3.54,-3.54],[-5,0],[-3.54,3.54],[0,5]]]},
+                symbol:{ type:"CIMPolygonSymbol", symbolLayers:[
+                  {type:"CIMSolidFill", enable:true, color:halo}
+                ]}
+              }]
+            }
+          ]
+        }
+      }
+    };
+  }
+
+  var SYM_TODO = marker([242,160, 61,255], [242,160, 61, 55], 15);
+  var SYM_DONE = marker([123,182, 97,255], [123,182, 97, 60], 15);
+
+  function selectionRings(geom){
+    return [
+      new Graphic({ geometry:geom, symbol:{ type:"simple-marker", style:"circle",
+        color:[95,211,196,0.16], size:54, outline:{color:[95,211,196,0.55], width:1} } }),
+      new Graphic({ geometry:geom, symbol:{ type:"simple-marker", style:"circle",
+        color:[0,0,0,0], size:36, outline:{color:[95,211,196,1], width:3.5} } }),
+      new Graphic({ geometry:geom, symbol:{ type:"simple-marker", style:"circle",
+        color:[255,255,255,1], size:7, outline:{color:[13,27,36,1], width:1.5} } })
+    ];
+  }
+
+  /* ------------------------------------------------------------------
+     MAP
+  ------------------------------------------------------------------ */
+  var pointsLayer = new FeatureLayer({
+    url: LAYER_URL,
+    outFields: ["*"],
+    popupEnabled: false,
+    renderer: { type:"simple", symbol: SYM_TODO }
+  });
+
+  var doneLayer = new GraphicsLayer();   // green overprint for logged points
+  var selLayer  = new GraphicsLayer();   // selection rings
+  var gpsLayer  = new GraphicsLayer();   // device position
+
+  var map = new Map({ basemap:"satellite", layers:[pointsLayer, doneLayer, selLayer, gpsLayer] });
+
+  var view = new MapView({
+    container: "viewDiv",
+    map: map,
+    ui: { components: ["attribution","zoom"] },
+    constraints: { rotationEnabled:false },
+    popup: { autoOpenEnabled:false }
+  });
+
+  /* ------------------------------------------------------------------
+     STATE
+  ------------------------------------------------------------------ */
+  var features = [], selected = null, oidField = "OBJECTID", gps = null;
+  var el = {
+    name:  document.getElementById("siteName"),
+    meta:  document.getElementById("siteMeta"),
+    badge: document.getElementById("badge"),
+    nav:   document.getElementById("btnNav"),
+    survey:document.getElementById("btnSurvey"),
+    log:   document.getElementById("btnLogged"),
+    text:  document.getElementById("progText"),
+    bar:   document.getElementById("bar"),
+    pct:   document.getElementById("progPct"),
+    toast: document.getElementById("toast"),
+    loader:document.getElementById("loader")
+  };
+
+  function toast(msg, ms){
+    el.toast.textContent = msg;
+    el.toast.style.display = "block";
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function(){ el.toast.style.display="none"; }, ms || 5000);
+  }
+
+  /* ---- geometry -> true lat/lon (this was the bug: Web Mercator in, WGS84 needed) ---- */
+  function latlon(graphic){
+    var g = graphic && graphic.geometry;
+    if(!g) return null;
+    var p = g;
+    if(g.spatialReference && !g.spatialReference.isWGS84 && g.spatialReference.isWebMercator){
+      p = webMercatorUtils.webMercatorToGeographic(g);
+    }
+    if(p && isFinite(p.latitude) && isFinite(p.longitude)){
+      return { lat:+p.latitude.toFixed(6), lon:+p.longitude.toFixed(6) };
+    }
+    if(g.spatialReference && g.spatialReference.wkid === 4326 && isFinite(g.y) && isFinite(g.x)){
+      return { lat:+g.y.toFixed(6), lon:+g.x.toFixed(6) };
+    }
+    return null;
+  }
+
+  function oidOf(g){ return g && g.attributes ? g.attributes[oidField] : null; }
+  function isDone(g){ return !!logged[oidOf(g)]; }
+
+  function pick(attrs, names){
+    for(var i=0;i<names.length;i++){
+      for(var k in attrs){
+        if(k.toLowerCase() === names[i] && attrs[k] !== null && attrs[k] !== "" && attrs[k] !== undefined){
+          return attrs[k];
+        }
+      }
+    }
+    return null;
+  }
+
+  function haversine(a,b){
+    if(!a||!b) return null;
+    var R=6371, r=Math.PI/180;
+    var dLat=(b.lat-a.lat)*r, dLon=(b.lon-a.lon)*r;
+    var q=Math.sin(dLat/2)*Math.sin(dLat/2)+
+          Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLon/2)*Math.sin(dLon/2);
+    return 2*R*Math.asin(Math.sqrt(q));
+  }
+
+  /* ------------------------------------------------------------------
+     RENDER
+  ------------------------------------------------------------------ */
+  function paintDone(){
+    doneLayer.removeAll();
+    features.forEach(function(f){
+      if(isDone(f)) doneLayer.add(new Graphic({ geometry:f.geometry, symbol:SYM_DONE }));
+    });
+  }
+
+  function updateProgress(){
+    var total = features.length;
+    var done  = features.filter(isDone).length;
+    var pct   = total ? Math.round(done/total*100) : 0;
+    el.text.textContent = done + " logged · " + (total-done) + " to go";
+    el.bar.style.width  = pct + "%";
+    el.pct.textContent  = pct + "%";
+  }
+
+  function select(graphic, zoom){
+    selected = graphic;
+    var c = latlon(graphic);
+    var a = graphic.attributes || {};
+    var oid = oidOf(graphic);
+
+    selLayer.removeAll();
+    selLayer.addMany(selectionRings(graphic.geometry));
+
+    var label = pick(a, ["site_id","siteid","point_id","pointid","name","label"]);
+    el.name.textContent = label ? String(label) : ("Point " + oid);
+
+    var parcel = pick(a, ["spi","parcel_spi","parcel_id","parcelid","pfi","ufi","property_id"]);
+    var bits = [];
+    bits.push("OID " + oid);
+    if(parcel) bits.push("Parcel " + parcel);
+    if(c) bits.push(c.lat.toFixed(5) + ", " + c.lon.toFixed(5));
+    el.meta.textContent = bits.join("  ·  ");
+
+    var d = gps && c ? haversine(gps, c) : null;
+    if(isDone(graphic)){
+      el.badge.textContent = "Logged";
+      el.badge.className = "done";
+    }else{
+      el.badge.textContent = d === null ? "To visit" : (d < 1 ? Math.round(d*1000)+" m" : d.toFixed(1)+" km");
+      el.badge.className = "";
+    }
+
+    el.nav.disabled = el.survey.disabled = !c;
+    el.log.disabled = false;
+    el.log.textContent = isDone(graphic) ? "Logged — tap to undo" : "Mark as logged";
+    el.log.className   = isDone(graphic) ? "is-done" : "";
+
+    if(zoom) view.goTo({ target:graphic.geometry, zoom:Math.max(view.zoom||0,17) },{duration:450}).catch(function(){});
+  }
+
+  /* ------------------------------------------------------------------
+     ACTIONS
+  ------------------------------------------------------------------ */
+  el.nav.onclick = function(){
+    var c = latlon(selected);
+    if(!c) return toast("No usable coordinates on this point.");
+    window.open(
+      "https://www.google.com/maps/dir/?api=1&destination=" +
+      encodeURIComponent(c.lat + "," + c.lon) + "&travelmode=driving",
+      "_blank", "noopener"
+    );
+  };
+
+  el.survey.onclick = function(){
+    var c = latlon(selected);
+    if(!c) return toast("No usable coordinates on this point.");
+    var a = selected.attributes || {};
+    var oid = oidOf(selected);
+
+    var p = [];
+    p.push("center=" + encodeURIComponent(c.lat + "," + c.lon));
+    p.push("field:objectid="  + encodeURIComponent(oid));
+    p.push("field:latitude="  + encodeURIComponent(c.lat));
+    p.push("field:longitude=" + encodeURIComponent(c.lon));
+
+    var sid = pick(a, ["site_id","siteid","point_id","pointid"]);
+    if(sid) p.push("field:site_id=" + encodeURIComponent(sid));
+
+    var spi = pick(a, ["spi","parcel_spi","parcel_id","parcelid"]);
+    if(spi) p.push("field:parcel_spi=" + encodeURIComponent(spi));
+
+    window.open(SURVEY_URL + "?" + p.join("&"), "_blank", "noopener");
+  };
+
+  el.log.onclick = function(){
+    if(!selected) return;
+    var oid = oidOf(selected);
+    if(logged[oid]) delete logged[oid];
+    else logged[oid] = new Date().toISOString();
+    saveLogged();
+    paintDone();
+    updateProgress();
+    select(selected, false);
+  };
+
+  /* ------------------------------------------------------------------
+     TOOLS
+  ------------------------------------------------------------------ */
+  var popBasemap = document.getElementById("popBasemap");
+  var popMeasure = document.getElementById("popMeasure");
+  var tBasemap   = document.getElementById("tBasemap");
+  var tMeasure   = document.getElementById("tMeasure");
+  var tLocate    = document.getElementById("tLocate");
+
+  var measurement = new Measurement({ view: view, activeTool: null });
+  document.getElementById("measureHost").appendChild(measurement.container);
+
+  function closeAll(){
+    popBasemap.classList.remove("show"); tBasemap.classList.remove("on");
+    popMeasure.classList.remove("show"); tMeasure.classList.remove("on");
+    measurement.clear(); measurement.activeTool = null;
+  }
+
+  tBasemap.onclick = function(){
+    var open = popBasemap.classList.contains("show");
+    closeAll();
+    if(!open){ popBasemap.classList.add("show"); tBasemap.classList.add("on"); }
+  };
+
+  tMeasure.onclick = function(){
+    var open = popMeasure.classList.contains("show");
+    closeAll();
+    if(!open){
+      popMeasure.classList.add("show");
+      tMeasure.classList.add("on");
+      measurement.activeTool = "distance";
+    }
+  };
+
+  Array.prototype.forEach.call(document.querySelectorAll(".bm"), function(b){
+    b.onclick = function(){
+      map.basemap = b.getAttribute("data-bm");
+      Array.prototype.forEach.call(document.querySelectorAll(".bm"), function(x){ x.classList.remove("sel"); });
+      b.classList.add("sel");
+    };
+  });
+
+  var locate = new Locate({ view: view, goToOverride: function(v,opts){
+    opts.target.scale = 4000; return v.goTo(opts.target);
+  }});
+
+  tLocate.onclick = function(){
+    closeAll();
+    tLocate.classList.add("on");
+    locate.locate().then(function(pos){
+      gps = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+      gpsLayer.removeAll();
+      var p = new Point({ longitude:gps.lon, latitude:gps.lat });
+      gpsLayer.add(new Graphic({ geometry:p, symbol:{ type:"simple-marker",
+        color:[95,211,196,0.18], size:34, outline:{color:[95,211,196,0.6], width:1} } }));
+      gpsLayer.add(new Graphic({ geometry:p, symbol:{ type:"simple-marker",
+        color:[95,211,196,1], size:13, outline:{color:[13,27,36,1], width:3} } }));
+      if(selected) select(selected, false);
+    }).catch(function(err){
+      toast("Location unavailable: " + (err && err.message ? err.message : "permission denied"));
+    }).then(function(){
+      setTimeout(function(){ tLocate.classList.remove("on"); }, 700);
+    });
+  };
+
+  /* ------------------------------------------------------------------
+     MAP INTERACTION
+  ------------------------------------------------------------------ */
+  view.on("click", function(evt){
+    if(measurement.activeTool) return;   // don't steal taps while measuring
+    view.hitTest(evt, { include: pointsLayer }).then(function(res){
+      var hit = res.results.filter(function(r){ return r.graphic && r.graphic.layer === pointsLayer; })[0];
+      if(!hit) return;
+      var oid = oidOf(hit.graphic);
+      var full = features.filter(function(f){ return oidOf(f) === oid; })[0];
+      select(full || hit.graphic, false);
+    });
+  });
+
+  /* ------------------------------------------------------------------
+     BOOT
+  ------------------------------------------------------------------ */
+  pointsLayer.load().then(function(){
+    oidField = pointsLayer.objectIdField || "OBJECTID";
+    return view.when();
+  }).then(function(){
+    var q = pointsLayer.createQuery();
+    q.where = "1=1";
+    q.outFields = ["*"];
+    q.returnGeometry = true;
+    return pointsLayer.queryFeatures(q);
+  }).then(function(res){
+    features = res.features;
+    if(!features.length) throw new Error("Layer returned no points.");
+    paintDone();
+    updateProgress();
+    return view.goTo(pointsLayer.fullExtent.expand(1.3), { duration:0 }).catch(function(){});
+  }).then(function(){
+    select(features[0], false);
+    el.loader.style.display = "none";
+  }).catch(function(err){
+    el.loader.style.display = "none";
+    el.meta.textContent = "Layer unavailable";
+    toast("Could not load the parcel points. " + (err && err.message ? err.message : ""), 12000);
+  });
+
+});
+</script>
 </body>
 </html>
