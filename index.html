@@ -221,7 +221,7 @@ body{
     </button>
   </div>
 
-  <button id="btnLogged" disabled>Mark as logged</button>
+  <button id="btnLogged" disabled>Checking submissions…</button>
 
   <div class="prog">
     <span id="progText">—</span>
@@ -261,14 +261,31 @@ require([
   var LAYER_URL   = "https://services1.arcgis.com/vHnIGBHHqDR6y0CR/arcgis/rest/services/FF_parcelpoints/FeatureServer/0";
   var SURVEY_ID   = "753e0446354f4b28a94f0296db82afca";
   var SURVEY_URL  = "https://survey123.arcgis.com/share/" + SURVEY_ID;
-  var STORE_KEY   = "ff_logged_oids";
+
+  /* -------- Survey123 RESULTS layer -------------------------------
+     PASTE the hosted feature layer that your survey submits into.
+     Find it on the survey item page in ArcGIS Online, e.g.
+     https://services1.arcgis.com/vHnIGBHHqDR6y0CR/arcgis/rest/services/<survey>/FeatureServer/0
+     Leave "" to disable status tracking entirely.
+  ------------------------------------------------------------------ */
+  var RESULTS_URL = "https://services1.arcgis.com/vHnIGBHHqDR6y0CR/arcgis/rest/services/survey123_753e0446354f4b28a94f0296db82afca_results/FeatureServer/0";
+
+  /* Field IN THE RESULTS LAYER holding the parcel point's OBJECTID.
+     Leave "" to auto-detect. NOTE: the results layer has its own
+     OBJECTID column — that is NOT the join field and is excluded.
+     Set explicitly if auto-detection picks the wrong one.            */
+  var RESULTS_KEY_FIELD = "";
+
+  /* Candidate names searched during auto-detection, in priority order. */
+  var KEY_CANDIDATES = ["objectid","object_id","parcel_oid","point_oid",
+                        "site_oid","source_objectid","oid","site_id","siteid"];
 
   /* ------------------------------------------------------------------
-     LOGGED STATE  (device-side, survives refresh)
+     LOGGED STATE  — derived from the Survey123 results layer.
+     logged[oid] = submission date, or true if no date field found.
   ------------------------------------------------------------------ */
   var logged = {};
-  try { logged = JSON.parse(localStorage.getItem(STORE_KEY) || "{}"); } catch(e){ logged = {}; }
-  function saveLogged(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(logged)); }catch(e){} }
+  var resultsLayer = null;
 
   /* ------------------------------------------------------------------
      SYMBOLS  — layered marker: soft halo + solid core + dark casing
@@ -348,6 +365,9 @@ require([
      STATE
   ------------------------------------------------------------------ */
   var features = [], selected = null, oidField = "OBJECTID", gps = null;
+  var hitToken = 0;          // discards out-of-order hitTest results
+  var selGraphics = [];      // current selection rings, removed by reference
+  var submittedField = null; // date field on the results layer, if present
   var el = {
     name:  document.getElementById("siteName"),
     meta:  document.getElementById("siteMeta"),
@@ -369,25 +389,46 @@ require([
     toast._t = setTimeout(function(){ el.toast.style.display="none"; }, ms || 5000);
   }
 
-  /* ---- geometry -> true lat/lon (this was the bug: Web Mercator in, WGS84 needed) ---- */
+  /* ---- geometry -> true lat/lon ----------------------------------
+     Features are queried with outSpatialReference 4326, so x/y are
+     already degrees. Web Mercator and the .latitude/.longitude
+     convenience props are kept as fallbacks.
+  ------------------------------------------------------------------ */
   function latlon(graphic){
     var g = graphic && graphic.geometry;
     if(!g) return null;
-    var p = g;
-    if(g.spatialReference && !g.spatialReference.isWGS84 && g.spatialReference.isWebMercator){
-      p = webMercatorUtils.webMercatorToGeographic(g);
+
+    var sr   = g.spatialReference || {};
+    var wkid = sr.wkid || sr.latestWkid;
+
+    // 4326 (WGS84) and the GDA family are all degrees for our purposes
+    if(wkid === 4326 || wkid === 4283 || wkid === 7844 || wkid === 4939 || wkid === 4938){
+      if(isFinite(g.y) && isFinite(g.x) && Math.abs(g.y) <= 90 && Math.abs(g.x) <= 180){
+        return { lat:+g.y.toFixed(6), lon:+g.x.toFixed(6) };
+      }
     }
-    if(p && isFinite(p.latitude) && isFinite(p.longitude)){
-      return { lat:+p.latitude.toFixed(6), lon:+p.longitude.toFixed(6) };
+
+    if(sr.isWebMercator || wkid === 3857 || wkid === 102100){
+      var p = webMercatorUtils.webMercatorToGeographic(g);
+      if(p && isFinite(p.y) && isFinite(p.x)){
+        return { lat:+p.y.toFixed(6), lon:+p.x.toFixed(6) };
+      }
     }
-    if(g.spatialReference && g.spatialReference.wkid === 4326 && isFinite(g.y) && isFinite(g.x)){
+
+    if(isFinite(g.latitude) && isFinite(g.longitude)){
+      return { lat:+g.latitude.toFixed(6), lon:+g.longitude.toFixed(6) };
+    }
+
+    // last resort: values look like degrees even if the wkid is unfamiliar
+    if(isFinite(g.y) && isFinite(g.x) && Math.abs(g.y) <= 90 && Math.abs(g.x) <= 180){
       return { lat:+g.y.toFixed(6), lon:+g.x.toFixed(6) };
     }
+
     return null;
   }
 
   function oidOf(g){ return g && g.attributes ? g.attributes[oidField] : null; }
-  function isDone(g){ return !!logged[oidOf(g)]; }
+  function isDone(g){ return !!logged[String(oidOf(g))]; }
 
   function pick(attrs, names){
     for(var i=0;i<names.length;i++){
@@ -434,8 +475,10 @@ require([
     var a = graphic.attributes || {};
     var oid = oidOf(graphic);
 
-    selLayer.removeAll();
-    selLayer.addMany(selectionRings(graphic.geometry));
+    // remove the previous rings by reference, never a blanket removeAll()
+    if(selGraphics.length){ selLayer.removeMany(selGraphics); }
+    selGraphics = selectionRings(graphic.geometry);
+    selLayer.addMany(selGraphics);
 
     var label = pick(a, ["site_id","siteid","point_id","pointid","name","label"]);
     el.name.textContent = label ? String(label) : ("Point " + oid);
@@ -444,22 +487,26 @@ require([
     var bits = [];
     bits.push("OID " + oid);
     if(parcel) bits.push("Parcel " + parcel);
-    if(c) bits.push(c.lat.toFixed(5) + ", " + c.lon.toFixed(5));
+    bits.push(c ? (c.lat.toFixed(5) + ", " + c.lon.toFixed(5)) : "no coordinates");
     el.meta.textContent = bits.join("  ·  ");
 
     var d = gps && c ? haversine(gps, c) : null;
     if(isDone(graphic)){
-      el.badge.textContent = "Logged";
+      var when = logged[String(oid)];
+      var stamp = "";
+      if(when && when !== true){
+        var dt = new Date(when);
+        if(!isNaN(dt)) stamp = " " + dt.toLocaleDateString(undefined,{day:"numeric",month:"short"});
+      }
+      el.badge.textContent = "Surveyed" + stamp;
       el.badge.className = "done";
     }else{
       el.badge.textContent = d === null ? "To visit" : (d < 1 ? Math.round(d*1000)+" m" : d.toFixed(1)+" km");
       el.badge.className = "";
     }
 
-    el.nav.disabled = el.survey.disabled = !c;
-    el.log.disabled = false;
-    el.log.textContent = isDone(graphic) ? "Logged — tap to undo" : "Mark as logged";
-    el.log.className   = isDone(graphic) ? "is-done" : "";
+    el.nav.disabled = el.survey.disabled = false;   // stay tappable; report errors via toast
+    el.log.className = isDone(graphic) ? "is-done" : "";
 
     if(zoom) view.goTo({ target:graphic.geometry, zoom:Math.max(view.zoom||0,17) },{duration:450}).catch(function(){});
   }
@@ -468,18 +515,25 @@ require([
      ACTIONS
   ------------------------------------------------------------------ */
   el.nav.onclick = function(){
+    if(!selected) return toast("Select a point first.");
     var c = latlon(selected);
-    if(!c) return toast("No usable coordinates on this point.");
-    window.open(
-      "https://www.google.com/maps/dir/?api=1&destination=" +
-      encodeURIComponent(c.lat + "," + c.lon) + "&travelmode=driving",
-      "_blank", "noopener"
-    );
+    if(!c){
+      var sr = selected.geometry && selected.geometry.spatialReference;
+      return toast("No usable coordinates (wkid " + (sr && (sr.wkid||sr.latestWkid)) + ").", 9000);
+    }
+    var url = "https://www.google.com/maps/dir/?api=1&destination=" +
+              encodeURIComponent(c.lat + "," + c.lon) + "&travelmode=driving";
+    var w = window.open(url, "_blank", "noopener");
+    if(!w) window.location.href = url;   // popup blocked (common on iOS Safari)
   };
 
   el.survey.onclick = function(){
+    if(!selected) return toast("Select a point first.");
     var c = latlon(selected);
-    if(!c) return toast("No usable coordinates on this point.");
+    if(!c){
+      var sr = selected.geometry && selected.geometry.spatialReference;
+      return toast("No usable coordinates (wkid " + (sr && (sr.wkid||sr.latestWkid)) + ").", 9000);
+    }
     var a = selected.attributes || {};
     var oid = oidOf(selected);
 
@@ -495,19 +549,54 @@ require([
     var spi = pick(a, ["spi","parcel_spi","parcel_id","parcelid"]);
     if(spi) p.push("field:parcel_spi=" + encodeURIComponent(spi));
 
-    window.open(SURVEY_URL + "?" + p.join("&"), "_blank", "noopener");
+    var url = SURVEY_URL + "?" + p.join("&");
+    console.log("Survey123 URL:", url);
+    var w = window.open(url, "_blank", "noopener");
+    if(!w) window.location.href = url;   // popup blocked (common on iOS Safari)
   };
 
-  el.log.onclick = function(){
-    if(!selected) return;
-    var oid = oidOf(selected);
-    if(logged[oid]) delete logged[oid];
-    else logged[oid] = new Date().toISOString();
-    saveLogged();
-    paintDone();
-    updateProgress();
-    select(selected, false);
-  };
+  /* Refresh submission status from the Survey123 results layer. */
+  el.log.onclick = function(){ refreshSubmissions(true); };
+
+  function refreshSubmissions(announce){
+    if(!resultsLayer){
+      if(announce) toast("No results layer configured — set RESULTS_URL at the top of the file.", 9000);
+      return Promise.resolve();
+    }
+
+    el.log.textContent = "Checking submissions…";
+    el.log.disabled = true;
+
+    var q = resultsLayer.createQuery();
+    q.where = RESULTS_KEY_FIELD + " IS NOT NULL";
+    q.outFields = [RESULTS_KEY_FIELD].concat(submittedField ? [submittedField] : []);
+    q.returnGeometry = false;
+    q.num = 5000;
+
+    return resultsLayer.queryFeatures(q).then(function(res){
+      logged = {};
+      res.features.forEach(function(f){
+        var a = f.attributes || {};
+        var key = a[RESULTS_KEY_FIELD];
+        if(key === null || key === undefined || key === "") return;
+        var n = parseInt(key, 10);
+        if(isNaN(n)) return;
+        var when = submittedField ? a[submittedField] : null;
+        logged[String(n)] = when || true;
+      });
+      console.log("Submitted points:", Object.keys(logged).length);
+      paintDone();
+      updateProgress();
+      if(selected) select(selected, false);
+      el.log.disabled = false;
+      el.log.textContent = "Refresh submissions";
+      if(announce) toast("Status updated from Survey123.", 2500);
+    }).catch(function(err){
+      el.log.disabled = false;
+      el.log.textContent = "Refresh submissions";
+      toast("Could not read submissions. " + (err && err.message ? err.message : ""), 9000);
+    });
+  }
 
   /* ------------------------------------------------------------------
      TOOLS
@@ -582,13 +671,38 @@ require([
   ------------------------------------------------------------------ */
   view.on("click", function(evt){
     if(measurement.activeTool) return;   // don't steal taps while measuring
+    var token = ++hitToken;
     view.hitTest(evt, { include: pointsLayer }).then(function(res){
-      var hit = res.results.filter(function(r){ return r.graphic && r.graphic.layer === pointsLayer; })[0];
-      if(!hit) return;
-      var oid = oidOf(hit.graphic);
+      if(token !== hitToken) return;     // a newer tap already won
+      var hits = res.results.filter(function(r){
+        return r.graphic && r.graphic.layer === pointsLayer;
+      });
+      if(!hits.length) return;
+
+      // overlapping points: take the one nearest the tap
+      var best = hits[0];
+      if(hits.length > 1 && evt.mapPoint){
+        var bd = Infinity;
+        hits.forEach(function(h){
+          var g = h.graphic.geometry;
+          if(!g) return;
+          var d = Math.pow(g.x - evt.mapPoint.x, 2) + Math.pow(g.y - evt.mapPoint.y, 2);
+          if(d < bd){ bd = d; best = h; }
+        });
+      }
+
+      var oid = oidOf(best.graphic);
       var full = features.filter(function(f){ return oidOf(f) === oid; })[0];
-      select(full || hit.graphic, false);
+      select(full || best.graphic, false);
     });
+  });
+
+  /* Coming back from Survey123 in another tab? Re-read status. */
+  window.addEventListener("focus", function(){
+    if(resultsLayer) refreshSubmissions(false);
+  });
+  document.addEventListener("visibilitychange", function(){
+    if(!document.hidden && resultsLayer) refreshSubmissions(false);
   });
 
   /* ------------------------------------------------------------------
@@ -602,6 +716,8 @@ require([
     q.where = "1=1";
     q.outFields = ["*"];
     q.returnGeometry = true;
+    q.outSpatialReference = { wkid: 4326 };   // always get degrees back
+    q.num = 2000;
     return pointsLayer.queryFeatures(q);
   }).then(function(res){
     features = res.features;
@@ -612,6 +728,61 @@ require([
   }).then(function(){
     select(features[0], false);
     el.loader.style.display = "none";
+
+    if(!RESULTS_URL){
+      el.log.textContent = "No results layer configured";
+      el.log.disabled = true;
+      return;
+    }
+
+    resultsLayer = new FeatureLayer({ url: RESULTS_URL, outFields:["*"] });
+    return resultsLayer.load().then(function(){
+      var ownOid = (resultsLayer.objectIdField || "OBJECTID").toLowerCase();
+      var globalId = (resultsLayer.globalIdField || "GlobalID").toLowerCase();
+
+      // Never join on the results layer's own OBJECTID / GlobalID.
+      var usable = resultsLayer.fields.filter(function(f){
+        var n = f.name.toLowerCase();
+        return n !== ownOid && n !== globalId;
+      });
+
+      console.log("Results layer fields:", usable.map(function(f){
+        return f.name + " (" + f.type + ")";
+      }).join(", "));
+
+      var match = null;
+      if(RESULTS_KEY_FIELD){
+        match = usable.filter(function(f){
+          return f.name.toLowerCase() === RESULTS_KEY_FIELD.toLowerCase();
+        })[0];
+      }else{
+        for(var i = 0; i < KEY_CANDIDATES.length && !match; i++){
+          match = usable.filter(function(f){
+            return f.name.toLowerCase() === KEY_CANDIDATES[i];
+          })[0];
+        }
+      }
+
+      if(!match){
+        el.log.textContent = "Key field not found";
+        el.log.disabled = true;
+        toast("Could not find the join field in the survey results. Open the console to see the " +
+              "available fields, then set RESULTS_KEY_FIELD to the question receiving field:objectid.", 14000);
+        return;
+      }
+      RESULTS_KEY_FIELD = match.name;
+      console.log("Joining survey results on field:", RESULTS_KEY_FIELD);
+
+      submittedField = (resultsLayer.fields.filter(function(f){
+        return ["submitted_date","CreationDate","created_date","EditDate"].indexOf(f.name) >= 0;
+      })[0] || {}).name || null;
+
+      return refreshSubmissions(false);
+    }).catch(function(err){
+      el.log.textContent = "Results layer unavailable";
+      el.log.disabled = true;
+      toast("Could not load the survey results layer. " + (err && err.message ? err.message : ""), 10000);
+    });
   }).catch(function(err){
     el.loader.style.display = "none";
     el.meta.textContent = "Layer unavailable";
