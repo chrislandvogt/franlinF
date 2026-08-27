@@ -274,11 +274,11 @@ require([
      Leave "" to auto-detect. NOTE: the results layer has its own
      OBJECTID column — that is NOT the join field and is excluded.
      Set explicitly if auto-detection picks the wrong one.            */
-  var RESULTS_KEY_FIELD = "";
+  var RESULTS_KEY_FIELD = "point_name_or_id";
 
-  /* Candidate names searched during auto-detection, in priority order. */
-  var KEY_CANDIDATES = ["objectid","object_id","parcel_oid","point_oid",
-                        "site_oid","source_objectid","oid","site_id","siteid"];
+  /* Candidate names searched if RESULTS_KEY_FIELD is blank. */
+  var KEY_CANDIDATES = ["point_name_or_id","objectid","object_id","parcel_oid",
+                        "point_oid","site_oid","source_objectid","oid","site_id","siteid"];
 
   /* ------------------------------------------------------------------
      LOGGED STATE  — derived from the Survey123 results layer.
@@ -394,41 +394,70 @@ require([
      already degrees. Web Mercator and the .latitude/.longitude
      convenience props are kept as fallbacks.
   ------------------------------------------------------------------ */
+  function degrees(lat, lon){
+    lat = Number(lat); lon = Number(lon);
+    if(!isFinite(lat) || !isFinite(lon)) return null;
+    if(Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+    return { lat:+lat.toFixed(6), lon:+lon.toFixed(6) };
+  }
+
   function latlon(graphic){
     var g = graphic && graphic.geometry;
     if(!g) return null;
 
     var sr   = g.spatialReference || {};
     var wkid = sr.wkid || sr.latestWkid;
+    var out  = null;
 
-    // 4326 (WGS84) and the GDA family are all degrees for our purposes
-    if(wkid === 4326 || wkid === 4283 || wkid === 7844 || wkid === 4939 || wkid === 4938){
-      if(isFinite(g.y) && isFinite(g.x) && Math.abs(g.y) <= 90 && Math.abs(g.x) <= 180){
-        return { lat:+g.y.toFixed(6), lon:+g.x.toFixed(6) };
-      }
+    // multipoint / unusual shapes: fall back to the first point
+    var gx = g.x, gy = g.y;
+    if((gx === undefined || gy === undefined) && g.points && g.points.length){
+      gx = g.points[0][0]; gy = g.points[0][1];
+    }
+    if((gx === undefined || gy === undefined) && g.extent && g.extent.center){
+      gx = g.extent.center.x; gy = g.extent.center.y;
     }
 
+    // Web Mercator -> geographic
     if(sr.isWebMercator || wkid === 3857 || wkid === 102100){
-      var p = webMercatorUtils.webMercatorToGeographic(g);
-      if(p && isFinite(p.y) && isFinite(p.x)){
-        return { lat:+p.y.toFixed(6), lon:+p.x.toFixed(6) };
-      }
+      try{
+        var p = webMercatorUtils.webMercatorToGeographic(g);
+        out = degrees(p && p.y, p && p.x);
+      }catch(e){}
+      if(out) return out;
     }
 
-    if(isFinite(g.latitude) && isFinite(g.longitude)){
-      return { lat:+g.latitude.toFixed(6), lon:+g.longitude.toFixed(6) };
-    }
+    // convenience props (populated for WGS84 / Web Mercator points)
+    out = degrees(g.latitude, g.longitude);
+    if(out) return out;
 
-    // last resort: values look like degrees even if the wkid is unfamiliar
-    if(isFinite(g.y) && isFinite(g.x) && Math.abs(g.y) <= 90 && Math.abs(g.x) <= 180){
-      return { lat:+g.y.toFixed(6), lon:+g.x.toFixed(6) };
-    }
+    // raw x/y already in degrees (4326, 4283, 7844, …)
+    out = degrees(gy, gx);
+    if(out) return out;
 
+    console.warn("latlon() failed. wkid:", wkid, "geometry:",
+                 (g.toJSON ? JSON.stringify(g.toJSON()) : g));
     return null;
   }
 
   function oidOf(g){ return g && g.attributes ? g.attributes[oidField] : null; }
-  function isDone(g){ return !!logged[String(oidOf(g))]; }
+
+  /* The value written into the survey's point_name_or_id question. */
+  function siteKey(g){
+    var a = (g && g.attributes) || {};
+    var label = pick(a, ["site_id","siteid","point_id","pointid","name","label"]);
+    return label ? String(label).trim() : String(oidOf(g));
+  }
+
+  function isDone(g){
+    var k = siteKey(g);
+    return !!(logged[k.toLowerCase()] || logged[String(oidOf(g))]);
+  }
+
+  function doneWhen(g){
+    var k = siteKey(g);
+    return logged[k.toLowerCase()] || logged[String(oidOf(g))] || null;
+  }
 
   function pick(attrs, names){
     for(var i=0;i<names.length;i++){
@@ -492,7 +521,7 @@ require([
 
     var d = gps && c ? haversine(gps, c) : null;
     if(isDone(graphic)){
-      var when = logged[String(oid)];
+      var when = doneWhen(graphic);
       var stamp = "";
       if(when && when !== true){
         var dt = new Date(when);
@@ -534,20 +563,11 @@ require([
       var sr = selected.geometry && selected.geometry.spatialReference;
       return toast("No usable coordinates (wkid " + (sr && (sr.wkid||sr.latestWkid)) + ").", 9000);
     }
-    var a = selected.attributes || {};
-    var oid = oidOf(selected);
-
     var p = [];
     p.push("center=" + encodeURIComponent(c.lat + "," + c.lon));
-    p.push("field:objectid="  + encodeURIComponent(oid));
-    p.push("field:latitude="  + encodeURIComponent(c.lat));
-    p.push("field:longitude=" + encodeURIComponent(c.lon));
 
-    var sid = pick(a, ["site_id","siteid","point_id","pointid"]);
-    if(sid) p.push("field:site_id=" + encodeURIComponent(sid));
-
-    var spi = pick(a, ["spi","parcel_spi","parcel_id","parcelid"]);
-    if(spi) p.push("field:parcel_spi=" + encodeURIComponent(spi));
+    // The survey's only ID question. Must match RESULTS_KEY_FIELD.
+    p.push("field:point_name_or_id=" + encodeURIComponent(siteKey(selected)));
 
     var url = SURVEY_URL + "?" + p.join("&");
     console.log("Survey123 URL:", url);
@@ -578,13 +598,16 @@ require([
       res.features.forEach(function(f){
         var a = f.attributes || {};
         var key = a[RESULTS_KEY_FIELD];
-        if(key === null || key === undefined || key === "") return;
-        var n = parseInt(key, 10);
-        if(isNaN(n)) return;
+        if(key === null || key === undefined) return;
+        key = String(key).trim();
+        if(!key) return;
         var when = submittedField ? a[submittedField] : null;
-        logged[String(n)] = when || true;
+        logged[key.toLowerCase()] = when || true;          // as submitted
+        var n = parseInt(key, 10);                          // and as a bare number
+        if(!isNaN(n)) logged[String(n)] = when || true;
       });
-      console.log("Submitted points:", Object.keys(logged).length);
+      console.log("Submitted points:", res.features.length,
+                  "→ keys:", Object.keys(logged).join(", "));
       paintDone();
       updateProgress();
       if(selected) select(selected, false);
