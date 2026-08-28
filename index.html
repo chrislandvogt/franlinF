@@ -15,10 +15,8 @@
   --ink-2:#132a37;
   --paper:#f4ece1;
   --amber:#f2a03d;
-  --amber-hi:#ffc46b;
   --teal:#5fd3c4;
   --moss:#7bb661;
-  --rust:#c9553d;
   --muted:#9db3bf;
   --line:rgba(244,236,225,.14);
   --sb:env(safe-area-inset-bottom,0px);
@@ -26,13 +24,9 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;height:100%;width:100%;overflow:hidden;background:var(--ink)}
-body{
-  font-family:"Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;
-  color:var(--paper);
-}
+body{font-family:"Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;color:var(--paper)}
 #viewDiv{position:absolute;inset:0}
 
-/* ---------- top bar ---------- */
 #topbar{
   position:absolute;top:calc(10px + var(--st));left:10px;right:10px;
   display:flex;gap:8px;align-items:flex-start;z-index:20;pointer-events:none;
@@ -44,11 +38,8 @@ body{
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   box-shadow:0 8px 26px rgba(0,0,0,.4);
 }
-.brand .kicker{
-  font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;
-  color:var(--amber);font-weight:700;
-}
-.brand .title{font-size:15px;font-weight:600;letter-spacing:.01em;margin-top:1px}
+.brand .kicker{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--amber);font-weight:700}
+.brand .title{font-size:15px;font-weight:600;margin-top:1px}
 .grow{flex:1}
 
 .tool{
@@ -65,34 +56,39 @@ body{
 .tool.on{background:var(--amber);border-color:var(--amber);color:#241202}
 .tool svg{width:21px;height:21px;stroke-width:1.7;fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
 
-/* ---------- floating panels ---------- */
 .pop{
   position:absolute;z-index:25;top:calc(66px + var(--st));right:10px;
   width:min(280px,calc(100vw - 20px));
   background:rgba(13,27,36,.96);border:1px solid var(--line);border-radius:16px;
   padding:12px;box-shadow:0 20px 50px rgba(0,0,0,.55);
-  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
-  display:none;
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);display:none;
 }
 .pop.show{display:block}
 .pop h3{margin:0 0 9px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--amber)}
+.pop h3.mt{margin-top:14px}
 .bm-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
 .bm{
   border:1px solid var(--line);border-radius:11px;background:var(--ink-2);
-  color:var(--paper);padding:10px 8px;font-size:12px;font-weight:600;cursor:pointer;
-  transition:.15s;
+  color:var(--paper);padding:10px 8px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;
 }
 .bm:active{transform:scale(.96)}
 .bm.sel{background:var(--amber);border-color:var(--amber);color:#241202}
+.toggle{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  width:100%;border:1px solid var(--line);border-radius:11px;background:var(--ink-2);
+  color:var(--paper);padding:11px 12px;font-size:12.5px;font-weight:600;cursor:pointer;
+}
+.toggle .pip{width:34px;height:19px;border-radius:99px;background:#3c5666;position:relative;flex:0 0 34px;transition:.18s}
+.toggle .pip::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:var(--paper);transition:.18s}
+.toggle.on .pip{background:var(--moss)}
+.toggle.on .pip::after{transform:translateX(15px)}
 #measureHost{margin-top:2px}
 .hint{font-size:11px;color:var(--muted);line-height:1.45;margin-top:8px}
 
-/* ---------- bottom sheet ---------- */
 #sheet{
   position:absolute;left:0;right:0;bottom:0;z-index:30;
   background:linear-gradient(180deg,rgba(19,42,55,.97),rgba(13,27,36,.99));
-  border-top:1px solid var(--line);
-  border-radius:22px 22px 0 0;
+  border-top:1px solid var(--line);border-radius:22px 22px 0 0;
   padding:9px 16px calc(14px + var(--sb));
   box-shadow:0 -14px 44px rgba(0,0,0,.55);
   backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
@@ -100,14 +96,9 @@ body{
 .grabber{width:40px;height:4px;border-radius:99px;background:#3c5666;margin:0 auto 11px}
 .head{display:flex;gap:12px;align-items:flex-start}
 .head .lbl{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--amber);font-weight:700}
-#siteName{font-size:23px;font-weight:600;margin-top:2px;line-height:1.1;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#siteMeta{font-size:12.5px;color:var(--muted);margin-top:4px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#badge{
-  flex:0 0 auto;font-size:11px;font-weight:700;padding:7px 11px;border-radius:99px;
-  border:1px solid var(--line);color:var(--muted);white-space:nowrap;
-}
+#siteName{font-size:23px;font-weight:600;margin-top:2px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#siteMeta{font-size:12.5px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#badge{flex:0 0 auto;font-size:11px;font-weight:700;padding:7px 11px;border-radius:99px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
 #badge.done{background:rgba(123,182,97,.16);border-color:rgba(123,182,97,.5);color:#bfe3a9}
 
 .btns{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px}
@@ -131,7 +122,6 @@ body{
 .track{flex:1;height:5px;border-radius:99px;background:rgba(244,236,225,.1);overflow:hidden}
 #bar{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--moss),var(--teal));transition:width .3s ease}
 
-/* ---------- toast + loader ---------- */
 #toast{
   position:absolute;z-index:60;left:50%;transform:translateX(-50%);
   top:calc(72px + var(--st));width:min(90vw,460px);
@@ -140,14 +130,11 @@ body{
   box-shadow:0 14px 36px rgba(0,0,0,.5);
 }
 #loader{position:absolute;inset:0;z-index:70;display:grid;place-items:center;background:var(--ink);text-align:center}
-.spin{width:34px;height:34px;margin:0 auto 13px;border:3px solid rgba(244,236,225,.15);
-  border-top-color:var(--amber);border-radius:50%;animation:sp .8s linear infinite}
+.spin{width:34px;height:34px;margin:0 auto 13px;border:3px solid rgba(244,236,225,.15);border-top-color:var(--amber);border-radius:50%;animation:sp .8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 #loader .kicker{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--amber);font-weight:700}
 #loader .t{font-size:16px;margin-top:4px}
 
-/* esri chrome */
-.esri-view .esri-ui-corner .esri-component{box-shadow:0 8px 26px rgba(0,0,0,.4)}
 .esri-attribution{font-size:10px}
 .esri-ui-bottom-left{bottom:212px!important}
 .esri-ui-bottom-right{bottom:212px!important}
@@ -172,7 +159,7 @@ body{
   </div>
   <div class="grow"></div>
 
-  <button class="tool" id="tBasemap" title="Basemap">
+  <button class="tool" id="tBasemap" title="Layers and basemap">
     <svg viewBox="0 0 24 24"><path d="M12 3 3 7.5l9 4.5 9-4.5L12 3Z"/><path d="m3 12 9 4.5L21 12"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>
   </button>
   <button class="tool" id="tMeasure" title="Measure">
@@ -184,7 +171,13 @@ body{
 </div>
 
 <div class="pop" id="popBasemap">
-  <h3>Basemap</h3>
+  <h3>Layers</h3>
+  <button class="toggle on" id="tgParcels">
+    <span>Vicmap parcel outlines</span><span class="pip"></span>
+  </button>
+  <div class="hint" id="parcelHint">Visible when zoomed in past 1:75,000.</div>
+
+  <h3 class="mt">Basemap</h3>
   <div class="bm-grid">
     <button class="bm sel" data-bm="satellite">Imagery</button>
     <button class="bm" data-bm="hybrid">Hybrid</button>
@@ -260,71 +253,86 @@ require([
   ------------------------------------------------------------------ */
   var LAYER_URL   = "https://services1.arcgis.com/vHnIGBHHqDR6y0CR/arcgis/rest/services/FF_parcelpoints/FeatureServer/0";
   var SURVEY_ID   = "753e0446354f4b28a94f0296db82afca";
-  var SURVEY_URL  = "https://survey123.arcgis.com/share/" + SURVEY_ID;
+  var SURVEY_WEB  = "https://survey123.arcgis.com/share/" + SURVEY_ID;
+  var SURVEY_APP  = "https://survey123.arcgis.app";   // opens the Survey123 field app
 
-  /* -------- Survey123 RESULTS layer -------------------------------
-     PASTE the hosted feature layer that your survey submits into.
-     Find it on the survey item page in ArcGIS Online, e.g.
-     https://services1.arcgis.com/vHnIGBHHqDR6y0CR/arcgis/rest/services/<survey>/FeatureServer/0
-     Leave "" to disable status tracking entirely.
-  ------------------------------------------------------------------ */
   var RESULTS_URL = "https://services1.arcgis.com/vHnIGBHHqDR6y0CR/arcgis/rest/services/survey123_753e0446354f4b28a94f0296db82afca_results/FeatureServer/0";
-
-  /* Field IN THE RESULTS LAYER holding the parcel point's OBJECTID.
-     Leave "" to auto-detect. NOTE: the results layer has its own
-     OBJECTID column — that is NOT the join field and is excluded.
-     Set explicitly if auto-detection picks the wrong one.            */
   var RESULTS_KEY_FIELD = "point_name_or_id";
-
-  /* Candidate names searched if RESULTS_KEY_FIELD is blank. */
   var KEY_CANDIDATES = ["point_name_or_id","objectid","object_id","parcel_oid",
                         "point_oid","site_oid","source_objectid","oid","site_id","siteid"];
 
-  /* ------------------------------------------------------------------
-     LOGGED STATE  — derived from the Survey123 results layer.
-     logged[oid] = submission date, or true if no date field found.
-  ------------------------------------------------------------------ */
-  var logged = {};
-  var resultsLayer = null;
+  /* Vicmap Parcel — public statewide cadastre (Vicmap as a Service). */
+  var VICMAP_URL  = "https://services-ap1.arcgis.com/P744lA0wf4LlBZ84/ArcGIS/rest/services/Vicmap_Parcel/FeatureServer/0";
+
+  /* Prefer native apps over websites. */
+  var USE_NATIVE_APPS = true;
 
   /* ------------------------------------------------------------------
-     SYMBOLS  — layered marker: soft halo + solid core + dark casing
+     PLATFORM
+  ------------------------------------------------------------------ */
+  var UA      = navigator.userAgent || "";
+  var isIOS   = /iPad|iPhone|iPod/.test(UA) ||
+                (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var isAndroid = /Android/.test(UA);
+  var isMobile  = isIOS || isAndroid;
+
+  /* Single navigation. Never window.open() AND assign location — that
+     was opening a tab and abandoning the map at the same time.        */
+  function go(url){ window.location.href = url; }
+
+  /* Try a native app scheme, fall back to the web URL if nothing
+     handles it. The page stays put if the app takes over.            */
+  function goNative(appUrl, webUrl){
+    if(!USE_NATIVE_APPS || !isMobile){ go(webUrl); return; }
+
+    var fired = false;
+    var bail = setTimeout(function(){
+      if(!fired && !document.hidden) go(webUrl);
+    }, 1400);
+
+    function seen(){ fired = true; clearTimeout(bail); }
+    document.addEventListener("visibilitychange", seen, { once:true });
+    window.addEventListener("pagehide", seen, { once:true });
+
+    go(appUrl);
+  }
+
+  /* ------------------------------------------------------------------
+     STATE
+  ------------------------------------------------------------------ */
+  var logged = {}, resultsLayer = null, submittedField = null;
+  var features = [], selected = null, oidField = "OBJECTID", gps = null;
+  var hitToken = 0, selGraphics = [];
+
+  /* ------------------------------------------------------------------
+     SYMBOLS
   ------------------------------------------------------------------ */
   function marker(fill, halo, size){
+    var ring = {rings:[[[0,5],[3.54,3.54],[5,0],[3.54,-3.54],[0,-5],[-3.54,-3.54],[-5,0],[-3.54,3.54],[0,5]]]};
     return {
-      type: "cim",
-      data: {
-        type: "CIMSymbolReference",
-        symbol: {
-          type: "CIMPointSymbol",
-          symbolLayers: [
-            { type:"CIMVectorMarker", enable:true, size:size,
-              frame:{xmin:-5,ymin:-5,xmax:5,ymax:5},
-              markerGraphics:[{ type:"CIMMarkerGraphic",
-                geometry:{rings:[[[0,5],[3.54,3.54],[5,0],[3.54,-3.54],[0,-5],[-3.54,-3.54],[-5,0],[-3.54,3.54],[0,5]]]},
-                symbol:{ type:"CIMPolygonSymbol", symbolLayers:[
-                  {type:"CIMSolidStroke", enable:true, width:1.6, color:[13,27,36,255]},
-                  {type:"CIMSolidFill",   enable:true, color:fill}
-                ]}
-              }]
-            },
-            { type:"CIMVectorMarker", enable:true, size:size*1.95,
-              frame:{xmin:-5,ymin:-5,xmax:5,ymax:5},
-              markerGraphics:[{ type:"CIMMarkerGraphic",
-                geometry:{rings:[[[0,5],[3.54,3.54],[5,0],[3.54,-3.54],[0,-5],[-3.54,-3.54],[-5,0],[-3.54,3.54],[0,5]]]},
-                symbol:{ type:"CIMPolygonSymbol", symbolLayers:[
-                  {type:"CIMSolidFill", enable:true, color:halo}
-                ]}
-              }]
-            }
-          ]
+      type:"cim",
+      data:{ type:"CIMSymbolReference", symbol:{ type:"CIMPointSymbol", symbolLayers:[
+        { type:"CIMVectorMarker", enable:true, size:size,
+          frame:{xmin:-5,ymin:-5,xmax:5,ymax:5},
+          markerGraphics:[{ type:"CIMMarkerGraphic", geometry:ring,
+            symbol:{ type:"CIMPolygonSymbol", symbolLayers:[
+              {type:"CIMSolidStroke", enable:true, width:1.6, color:[13,27,36,255]},
+              {type:"CIMSolidFill",   enable:true, color:fill}
+            ]}}]
+        },
+        { type:"CIMVectorMarker", enable:true, size:size*1.95,
+          frame:{xmin:-5,ymin:-5,xmax:5,ymax:5},
+          markerGraphics:[{ type:"CIMMarkerGraphic", geometry:ring,
+            symbol:{ type:"CIMPolygonSymbol", symbolLayers:[
+              {type:"CIMSolidFill", enable:true, color:halo}
+            ]}}]
         }
-      }
+      ]}}
     };
   }
 
-  var SYM_TODO = marker([242,160, 61,255], [242,160, 61, 55], 15);
-  var SYM_DONE = marker([123,182, 97,255], [123,182, 97, 60], 15);
+  var SYM_TODO = marker([242,160,61,255], [242,160,61,55], 15);
+  var SYM_DONE = marker([123,182,97,255], [123,182,97,60], 15);
 
   function selectionRings(geom){
     return [
@@ -338,8 +346,26 @@ require([
   }
 
   /* ------------------------------------------------------------------
-     MAP
+     LAYERS
   ------------------------------------------------------------------ */
+  var parcelLayer = new FeatureLayer({
+    url: VICMAP_URL,
+    title: "Vicmap parcels",
+    outFields: [],
+    popupEnabled: false,
+    minScale: 75000,          // outlines appear once zoomed in
+    maxScale: 0,
+    opacity: 0.95,
+    renderer: {
+      type: "simple",
+      symbol: {
+        type: "simple-fill",
+        color: [0,0,0,0],                       // outlines only, no fill
+        outline: { color:[244,236,225,0.55], width:1 }
+      }
+    }
+  });
+
   var pointsLayer = new FeatureLayer({
     url: LAYER_URL,
     outFields: ["*"],
@@ -347,11 +373,14 @@ require([
     renderer: { type:"simple", symbol: SYM_TODO }
   });
 
-  var doneLayer = new GraphicsLayer();   // green overprint for logged points
-  var selLayer  = new GraphicsLayer();   // selection rings
-  var gpsLayer  = new GraphicsLayer();   // device position
+  var doneLayer = new GraphicsLayer();
+  var selLayer  = new GraphicsLayer();
+  var gpsLayer  = new GraphicsLayer();
 
-  var map = new Map({ basemap:"satellite", layers:[pointsLayer, doneLayer, selLayer, gpsLayer] });
+  var map = new Map({
+    basemap: "satellite",
+    layers: [parcelLayer, pointsLayer, doneLayer, selLayer, gpsLayer]
+  });
 
   var view = new MapView({
     container: "viewDiv",
@@ -362,12 +391,8 @@ require([
   });
 
   /* ------------------------------------------------------------------
-     STATE
+     HELPERS
   ------------------------------------------------------------------ */
-  var features = [], selected = null, oidField = "OBJECTID", gps = null;
-  var hitToken = 0;          // discards out-of-order hitTest results
-  var selGraphics = [];      // current selection rings, removed by reference
-  var submittedField = null; // date field on the results layer, if present
   var el = {
     name:  document.getElementById("siteName"),
     meta:  document.getElementById("siteMeta"),
@@ -389,11 +414,6 @@ require([
     toast._t = setTimeout(function(){ el.toast.style.display="none"; }, ms || 5000);
   }
 
-  /* ---- geometry -> true lat/lon ----------------------------------
-     Features are queried with outSpatialReference 4326, so x/y are
-     already degrees. Web Mercator and the .latitude/.longitude
-     convenience props are kept as fallbacks.
-  ------------------------------------------------------------------ */
   function degrees(lat, lon){
     lat = Number(lat); lon = Number(lon);
     if(!isFinite(lat) || !isFinite(lon)) return null;
@@ -404,12 +424,10 @@ require([
   function latlon(graphic){
     var g = graphic && graphic.geometry;
     if(!g) return null;
-
-    var sr   = g.spatialReference || {};
+    var sr = g.spatialReference || {};
     var wkid = sr.wkid || sr.latestWkid;
-    var out  = null;
+    var out = null;
 
-    // multipoint / unusual shapes: fall back to the first point
     var gx = g.x, gy = g.y;
     if((gx === undefined || gy === undefined) && g.points && g.points.length){
       gx = g.points[0][0]; gy = g.points[0][1];
@@ -418,7 +436,6 @@ require([
       gx = g.extent.center.x; gy = g.extent.center.y;
     }
 
-    // Web Mercator -> geographic
     if(sr.isWebMercator || wkid === 3857 || wkid === 102100){
       try{
         var p = webMercatorUtils.webMercatorToGeographic(g);
@@ -427,11 +444,9 @@ require([
       if(out) return out;
     }
 
-    // convenience props (populated for WGS84 / Web Mercator points)
     out = degrees(g.latitude, g.longitude);
     if(out) return out;
 
-    // raw x/y already in degrees (4326, 4283, 7844, …)
     out = degrees(gy, gx);
     if(out) return out;
 
@@ -442,23 +457,6 @@ require([
 
   function oidOf(g){ return g && g.attributes ? g.attributes[oidField] : null; }
 
-  /* The value written into the survey's point_name_or_id question. */
-  function siteKey(g){
-    var a = (g && g.attributes) || {};
-    var label = pick(a, ["site_id","siteid","point_id","pointid","name","label"]);
-    return label ? String(label).trim() : String(oidOf(g));
-  }
-
-  function isDone(g){
-    var k = siteKey(g);
-    return !!(logged[k.toLowerCase()] || logged[String(oidOf(g))]);
-  }
-
-  function doneWhen(g){
-    var k = siteKey(g);
-    return logged[k.toLowerCase()] || logged[String(oidOf(g))] || null;
-  }
-
   function pick(attrs, names){
     for(var i=0;i<names.length;i++){
       for(var k in attrs){
@@ -468,6 +466,19 @@ require([
       }
     }
     return null;
+  }
+
+  function siteKey(g){
+    var a = (g && g.attributes) || {};
+    var label = pick(a, ["site_id","siteid","point_id","pointid","name","label"]);
+    return label ? String(label).trim() : String(oidOf(g));
+  }
+
+  function isDone(g){
+    return !!(logged[siteKey(g).toLowerCase()] || logged[String(oidOf(g))]);
+  }
+  function doneWhen(g){
+    return logged[siteKey(g).toLowerCase()] || logged[String(oidOf(g))] || null;
   }
 
   function haversine(a,b){
@@ -504,8 +515,7 @@ require([
     var a = graphic.attributes || {};
     var oid = oidOf(graphic);
 
-    // remove the previous rings by reference, never a blanket removeAll()
-    if(selGraphics.length){ selLayer.removeMany(selGraphics); }
+    if(selGraphics.length) selLayer.removeMany(selGraphics);
     selGraphics = selectionRings(graphic.geometry);
     selLayer.addMany(selGraphics);
 
@@ -513,16 +523,14 @@ require([
     el.name.textContent = label ? String(label) : ("Point " + oid);
 
     var parcel = pick(a, ["spi","parcel_spi","parcel_id","parcelid","pfi","ufi","property_id"]);
-    var bits = [];
-    bits.push("OID " + oid);
+    var bits = ["OID " + oid];
     if(parcel) bits.push("Parcel " + parcel);
     bits.push(c ? (c.lat.toFixed(5) + ", " + c.lon.toFixed(5)) : "no coordinates");
     el.meta.textContent = bits.join("  ·  ");
 
     var d = gps && c ? haversine(gps, c) : null;
     if(isDone(graphic)){
-      var when = doneWhen(graphic);
-      var stamp = "";
+      var when = doneWhen(graphic), stamp = "";
       if(when && when !== true){
         var dt = new Date(when);
         if(!isNaN(dt)) stamp = " " + dt.toLocaleDateString(undefined,{day:"numeric",month:"short"});
@@ -534,7 +542,7 @@ require([
       el.badge.className = "";
     }
 
-    el.nav.disabled = el.survey.disabled = false;   // stay tappable; report errors via toast
+    el.nav.disabled = el.survey.disabled = false;
     el.log.className = isDone(graphic) ? "is-done" : "";
 
     if(zoom) view.goTo({ target:graphic.geometry, zoom:Math.max(view.zoom||0,17) },{duration:450}).catch(function(){});
@@ -546,41 +554,49 @@ require([
   el.nav.onclick = function(){
     if(!selected) return toast("Select a point first.");
     var c = latlon(selected);
-    if(!c){
-      var sr = selected.geometry && selected.geometry.spatialReference;
-      return toast("No usable coordinates (wkid " + (sr && (sr.wkid||sr.latestWkid)) + ").", 9000);
+    if(!c) return toast("No usable coordinates on this point.", 8000);
+
+    var dest = c.lat + "," + c.lon;
+    var web  = "https://www.google.com/maps/dir/?api=1&destination=" +
+               encodeURIComponent(dest) + "&travelmode=driving";
+
+    if(isIOS){
+      // Google Maps iOS app
+      goNative("comgooglemaps://?daddr=" + encodeURIComponent(dest) + "&directionsmode=driving", web);
+    }else if(isAndroid){
+      // Android navigation intent — turn-by-turn straight away
+      goNative("google.navigation:q=" + encodeURIComponent(dest) + "&mode=d", web);
+    }else{
+      go(web);
     }
-    var url = "https://www.google.com/maps/dir/?api=1&destination=" +
-              encodeURIComponent(c.lat + "," + c.lon) + "&travelmode=driving";
-    var w = window.open(url, "_blank", "noopener");
-    if(!w) window.location.href = url;   // popup blocked (common on iOS Safari)
   };
 
   el.survey.onclick = function(){
     if(!selected) return toast("Select a point first.");
     var c = latlon(selected);
-    if(!c){
-      var sr = selected.geometry && selected.geometry.spatialReference;
-      return toast("No usable coordinates (wkid " + (sr && (sr.wkid||sr.latestWkid)) + ").", 9000);
+    if(!c) return toast("No usable coordinates on this point.", 8000);
+
+    var qs = "?itemID=" + SURVEY_ID +
+             "&center=" + encodeURIComponent(c.lat + "," + c.lon) +
+             "&field:point_name_or_id=" + encodeURIComponent(siteKey(selected));
+
+    var web = SURVEY_WEB + "?center=" + encodeURIComponent(c.lat + "," + c.lon) +
+              "&field:point_name_or_id=" + encodeURIComponent(siteKey(selected));
+
+    console.log("Survey app link:", SURVEY_APP + qs);
+
+    if(isMobile){
+      goNative(SURVEY_APP + qs, web);   // field app, falls back to the web form
+    }else{
+      go(web);
     }
-    var p = [];
-    p.push("center=" + encodeURIComponent(c.lat + "," + c.lon));
-
-    // The survey's only ID question. Must match RESULTS_KEY_FIELD.
-    p.push("field:point_name_or_id=" + encodeURIComponent(siteKey(selected)));
-
-    var url = SURVEY_URL + "?" + p.join("&");
-    console.log("Survey123 URL:", url);
-    var w = window.open(url, "_blank", "noopener");
-    if(!w) window.location.href = url;   // popup blocked (common on iOS Safari)
   };
 
-  /* Refresh submission status from the Survey123 results layer. */
   el.log.onclick = function(){ refreshSubmissions(true); };
 
   function refreshSubmissions(announce){
     if(!resultsLayer){
-      if(announce) toast("No results layer configured — set RESULTS_URL at the top of the file.", 9000);
+      if(announce) toast("No results layer configured.", 7000);
       return Promise.resolve();
     }
 
@@ -602,12 +618,11 @@ require([
         key = String(key).trim();
         if(!key) return;
         var when = submittedField ? a[submittedField] : null;
-        logged[key.toLowerCase()] = when || true;          // as submitted
-        var n = parseInt(key, 10);                          // and as a bare number
+        logged[key.toLowerCase()] = when || true;
+        var n = parseInt(key, 10);
         if(!isNaN(n)) logged[String(n)] = when || true;
       });
-      console.log("Submitted points:", res.features.length,
-                  "→ keys:", Object.keys(logged).join(", "));
+      console.log("Submissions:", res.features.length);
       paintDone();
       updateProgress();
       if(selected) select(selected, false);
@@ -629,6 +644,7 @@ require([
   var tBasemap   = document.getElementById("tBasemap");
   var tMeasure   = document.getElementById("tMeasure");
   var tLocate    = document.getElementById("tLocate");
+  var tgParcels  = document.getElementById("tgParcels");
 
   var measurement = new Measurement({
     view: view,
@@ -656,6 +672,11 @@ require([
       tMeasure.classList.add("on");
       measurement.activeTool = "distance";
     }
+  };
+
+  tgParcels.onclick = function(){
+    parcelLayer.visible = !parcelLayer.visible;
+    tgParcels.classList.toggle("on", parcelLayer.visible);
   };
 
   Array.prototype.forEach.call(document.querySelectorAll(".bm"), function(b){
@@ -693,16 +714,15 @@ require([
      MAP INTERACTION
   ------------------------------------------------------------------ */
   view.on("click", function(evt){
-    if(measurement.activeTool) return;   // don't steal taps while measuring
+    if(measurement.activeTool) return;
     var token = ++hitToken;
     view.hitTest(evt, { include: pointsLayer }).then(function(res){
-      if(token !== hitToken) return;     // a newer tap already won
+      if(token !== hitToken) return;
       var hits = res.results.filter(function(r){
         return r.graphic && r.graphic.layer === pointsLayer;
       });
       if(!hits.length) return;
 
-      // overlapping points: take the one nearest the tap
       var best = hits[0];
       if(hits.length > 1 && evt.mapPoint){
         var bd = Infinity;
@@ -720,10 +740,8 @@ require([
     });
   });
 
-  /* Coming back from Survey123 in another tab? Re-read status. */
-  window.addEventListener("focus", function(){
-    if(resultsLayer) refreshSubmissions(false);
-  });
+  /* Returning from Survey123? Re-read status. */
+  window.addEventListener("focus", function(){ if(resultsLayer) refreshSubmissions(false); });
   document.addEventListener("visibilitychange", function(){
     if(!document.hidden && resultsLayer) refreshSubmissions(false);
   });
@@ -731,6 +749,11 @@ require([
   /* ------------------------------------------------------------------
      BOOT
   ------------------------------------------------------------------ */
+  parcelLayer.load().catch(function(){
+    tgParcels.style.display = "none";
+    document.getElementById("parcelHint").textContent = "Vicmap parcel service unavailable.";
+  });
+
   pointsLayer.load().then(function(){
     oidField = pointsLayer.objectIdField || "OBJECTID";
     return view.when();
@@ -739,65 +762,53 @@ require([
     q.where = "1=1";
     q.outFields = ["*"];
     q.returnGeometry = true;
-    q.outSpatialReference = { wkid: 4326 };   // always get degrees back
+    q.outSpatialReference = { wkid: 4326 };
     q.num = 2000;
     return pointsLayer.queryFeatures(q);
   }).then(function(res){
     features = res.features;
     if(!features.length) throw new Error("Layer returned no points.");
-    paintDone();
     updateProgress();
     return view.goTo(pointsLayer.fullExtent.expand(1.3), { duration:0 }).catch(function(){});
   }).then(function(){
     select(features[0], false);
     el.loader.style.display = "none";
 
-    if(!RESULTS_URL){
-      el.log.textContent = "No results layer configured";
-      el.log.disabled = true;
-      return;
-    }
-
     resultsLayer = new FeatureLayer({ url: RESULTS_URL, outFields:["*"] });
     return resultsLayer.load().then(function(){
-      var ownOid = (resultsLayer.objectIdField || "OBJECTID").toLowerCase();
+      var ownOid   = (resultsLayer.objectIdField || "OBJECTID").toLowerCase();
       var globalId = (resultsLayer.globalIdField || "GlobalID").toLowerCase();
 
-      // Never join on the results layer's own OBJECTID / GlobalID.
       var usable = resultsLayer.fields.filter(function(f){
         var n = f.name.toLowerCase();
         return n !== ownOid && n !== globalId;
       });
-
-      console.log("Results layer fields:", usable.map(function(f){
-        return f.name + " (" + f.type + ")";
-      }).join(", "));
 
       var match = null;
       if(RESULTS_KEY_FIELD){
         match = usable.filter(function(f){
           return f.name.toLowerCase() === RESULTS_KEY_FIELD.toLowerCase();
         })[0];
-      }else{
-        for(var i = 0; i < KEY_CANDIDATES.length && !match; i++){
+      }
+      if(!match){
+        for(var i=0; i<KEY_CANDIDATES.length && !match; i++){
           match = usable.filter(function(f){
             return f.name.toLowerCase() === KEY_CANDIDATES[i];
           })[0];
         }
       }
-
       if(!match){
         el.log.textContent = "Key field not found";
         el.log.disabled = true;
-        toast("Could not find the join field in the survey results. Open the console to see the " +
-              "available fields, then set RESULTS_KEY_FIELD to the question receiving field:objectid.", 14000);
+        console.log("Results fields:", usable.map(function(f){ return f.name; }).join(", "));
+        toast("Could not find the join field in the survey results.", 12000);
         return;
       }
       RESULTS_KEY_FIELD = match.name;
-      console.log("Joining survey results on field:", RESULTS_KEY_FIELD);
+      console.log("Joining on:", RESULTS_KEY_FIELD);
 
       submittedField = (resultsLayer.fields.filter(function(f){
-        return ["submitted_date","CreationDate","created_date","EditDate"].indexOf(f.name) >= 0;
+        return ["CreationDate","created_date","EditDate","submitted_date"].indexOf(f.name) >= 0;
       })[0] || {}).name || null;
 
       return refreshSubmissions(false);
